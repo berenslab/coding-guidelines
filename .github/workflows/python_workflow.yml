@@ -1,0 +1,65 @@
+name: python workflow
+
+# Pipeline will run for pushs and pull requests to main branch.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Job details.
+# We call our job python_ci, and tell it to run under the latest version of ubuntu.
+# We will run the code with three recent python versions.
+jobs:
+  python_ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+        
+    # Basic setup.
+    # using pre-made pipeline steps provided by GitHub. 
+    # Whenever a step contains 'uses' keyword, it is utilizing a step made by someone else. 
+    # Relative repository paths are supplied to uses keyword and follow {user}/{step-name}@{version} format.
+    steps:
+     - uses: actions/checkout@v2
+
+     - name: Set up Python ${{ matrix.python-version }}
+       uses: actions/setup-python@v2
+       with:
+         python-version: ${{ matrix.python-version }}
+
+   # Install dependecies, from requirements if exist.
+     - name: Install dependencies
+       run: |
+         python -m pip install --upgrade pip
+         python -m pip install "black==22.3.0" "isort==5.10.1" # pylint flake8 pytest
+         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+         
+     - name: Check black formatting
+       run: |
+         black --diff --check $(git ls-files '*.py')
+         
+     - name: Check isort formatting
+       run: |
+         isort $(git ls-files '*.py') -c -v
+
+#    # Uncomment the following block if you want to lint and test the code automatically.
+
+#    # Lint the code.
+#      - name: Lint with flake8
+#      # First invocation checks for critical errors. 
+#      # The second looks for non-breaking mistakes and only prints warnings.
+#        run: |
+#          # stop the build if there are Python syntax errors or undefined names
+#          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+#          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+#          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+         
+#      - name: Lint with pylint
+#        run: |
+#          pylint --disable=all --enable=unused-import $(git ls-files '*.py')
+    
+#      - name: Test with pytest
+#        run: |
+#          pytest
